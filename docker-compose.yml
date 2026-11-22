@@ -1,0 +1,14 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ebook-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ebook_qdrant_data:/qdrant/storage
+
+volumes:
+  ebook_qdrant_data:
+
