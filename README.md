@@ -93,7 +93,7 @@ Question
 | Layer | Technology | Role |
 | --- | --- | --- |
 | Interface | Next.js 16, React 19, TypeScript | Responsive library and chat experience |
-| Rendering | React Markdown, remark-gfm | Rich assistant responses |
+| Rendering | React Markdown, remark-gfm, Boring Avatars, DiceBear Bottts | Rich responses and local SVG avatars |
 | API | Python 3.12+, FastAPI | Upload, library, health, and chat endpoints |
 | RAG | LangChain | Chunking, retrieval, prompts, and model integration |
 | Local AI | Ollama | Embeddings and answer generation |
@@ -185,6 +185,7 @@ CHAT_MODEL=qwen3.5:9b
 EMBEDDING_MODEL=qwen3-embedding:0.6b
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=ebook_chunks
+RETRIEVAL_SCORE_THRESHOLD=0.28
 FRONTEND_ORIGIN=http://localhost:3000
 ```
 
@@ -234,6 +235,7 @@ The first request can be slower because Ollama must load the model into memory.
 | `EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Model used to embed passages and queries |
 | `QDRANT_URL` | `http://localhost:6333` | Qdrant HTTP API |
 | `QDRANT_COLLECTION` | `ebook_chunks` | Vector collection name |
+| `RETRIEVAL_SCORE_THRESHOLD` | `0.28` | Minimum similarity score required to answer from retrieved passages |
 | `FRONTEND_ORIGIN` | `http://localhost:3000` | Allowed browser origin for CORS |
 
 ### Frontend environment variables

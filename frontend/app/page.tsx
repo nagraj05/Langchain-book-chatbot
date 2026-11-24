@@ -9,10 +9,22 @@ import {
   useRef,
   useState,
 } from "react";
+import { Avatar as DiceBearAvatar, Style } from "@dicebear/core";
+import bottts from "@dicebear/styles/bottts.json";
+import BoringAvatar from "boring-avatars";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const botttsStyle = new Style(bottts);
+const BOOKBOT_AVATAR = new DiceBearAvatar(botttsStyle, {
+  seed: "BOOKBot",
+  backgroundColor: "#111418",
+  borderRadius: 24,
+  scale: 0.84,
+  title: "BOOKBot",
+  idRandomization: true,
+}).toDataUri();
 
 type Book = { id: string; title: string; filename: string; file_type: string; chunks: number; added_at: string };
 type Source = { index: number; book_id: string; title: string; section?: string; page?: number; excerpt: string };
@@ -84,6 +96,28 @@ function SearchIcon() {
 
 function TrashIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6.5h8M8 6.5V5h4v1.5M7 8.5l.5 6h5l.5-6" /></svg>;
+}
+
+function ChatAvatar({ role }: { role: Message["role"] }) {
+  const assistant = role === "assistant";
+  return (
+    <div
+      className={`avatar ${assistant ? "bot-avatar" : "reader-avatar"}`}
+      aria-label={assistant ? "BOOKBot avatar" : "Your avatar"}
+    >
+      {assistant ? (
+        <img src={BOOKBOT_AVATAR} alt="" />
+      ) : (
+        <BoringAvatar
+          name="BOOKBot Reader"
+          variant="beam"
+          colors={["#101318", "#28445a", "#5f88a8", "#a8c7e6", "#edf5fa"]}
+          size="100%"
+          square
+        />
+      )}
+    </div>
+  );
 }
 
 export default function Home() {
@@ -547,7 +581,7 @@ export default function Home() {
               </div>
             ) : messages.map((message, index) => (
               <article className={`message-row ${message.role}`} key={`${message.role}-${index}`}>
-                <div className="avatar" aria-hidden="true">{message.role === "user" ? "You" : "L"}</div>
+                <ChatAvatar role={message.role} />
                 <div className="message-content">
                   <div className="message-author">{message.role === "user" ? "You" : "BOOKBot"}</div>
                   <div className="message-text">
@@ -577,7 +611,7 @@ export default function Home() {
 
             {busy && (
               <div className="message-row assistant loading-row">
-                <div className="avatar" aria-hidden="true">L</div>
+                <ChatAvatar role="assistant" />
                 <div className="message-content">
                   <div className="message-author">BOOKBot</div>
                   <div className="typing-indicator" aria-label="Generating answer"><span /><span /><span /></div>

@@ -15,6 +15,7 @@ class Settings:
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "qwen3-embedding:0.6b")
     qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_collection: str = os.getenv("QDRANT_COLLECTION", "ebook_chunks")
+    retrieval_score_threshold: float = float(os.getenv("RETRIEVAL_SCORE_THRESHOLD", "0.28"))
     frontend_origin: str = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
     data_dir: Path = BACKEND_DIR / "data"
 

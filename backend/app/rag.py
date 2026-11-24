@@ -84,6 +84,10 @@ class RagService:
     def answer(
         self, question: str, book_ids: list[str], history: list[ChatMessage]
     ) -> tuple[str, list[Source]]:
+        casual_answer = _casual_response(question)
+        if casual_answer:
+            return casual_answer, []
+
         store = self.ensure_store()
         query_filter = None
         if book_ids:
@@ -96,10 +100,18 @@ class RagService:
                 ]
             )
 
-        results = store.similarity_search_with_score(question, k=8, filter=query_filter)
+        results = store.similarity_search_with_score(
+            question,
+            k=8,
+            filter=query_filter,
+            score_threshold=settings.retrieval_score_threshold,
+        )
         if not results:
             return (
-                "I couldn't find relevant passages in the selected books.",
+                (
+                    "I couldn't find relevant information about that in the selected book. "
+                    "Try asking a more specific question about its content."
+                ),
                 [],
             )
 
@@ -129,13 +141,16 @@ class RagService:
         history_text = "\n".join(
             f"{message.role.title()}: {message.content}" for message in history[-6:]
         )
+        valid_citations = f"[1] through [{len(sources)}]"
         system_prompt = (
             "You answer questions about the user's private library. Use only the "
             "provided source passages. If the passages do not establish an answer, "
             "say that you could not find it in the selected books. Do not invent "
             "characters, events, quotations, chapters, or page numbers. Cite factual "
-            "claims using [1], [2], etc., matching the source number. Give a direct, "
-            "clear answer and distinguish facts from interpretation."
+            f"claims using only {valid_citations}, matching the source number. Never "
+            "cite a number outside that range. Answer the user's actual question; do "
+            "not summarize unrelated passages. Give a direct, clear answer and "
+            "distinguish facts from interpretation."
         )
         user_prompt = (
             f"Recent conversation:\n{history_text or '(none)'}\n\n"
@@ -208,6 +223,41 @@ def _excerpt(text: str, limit: int = 320) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[:limit].rsplit(" ", 1)[0] + "…"
+
+
+def _casual_response(question: str) -> str | None:
+    normalized = re.sub(r"[^a-z0-9\s']", "", question.lower()).strip()
+    normalized = " ".join(normalized.split())
+    greetings = {
+        "hi",
+        "hello",
+        "hey",
+        "hiya",
+        "greetings",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }
+    thanks = {"thanks", "thank you", "thank you so much", "thx"}
+    farewells = {"bye", "goodbye", "see you", "see you later"}
+    capabilities = {
+        "what can you do",
+        "how can you help",
+        "who are you",
+        "what are you",
+    }
+    if normalized in greetings:
+        return "Hi! I'm **BOOKBot**. Ask me anything about the selected book."
+    if normalized in thanks:
+        return "You're welcome! Ask another question whenever you're ready."
+    if normalized in farewells:
+        return "Goodbye! Your book and conversation history will stay saved locally."
+    if normalized in capabilities:
+        return (
+            "I'm **BOOKBot**. I answer questions about the selected book using its "
+            "indexed passages and include source citations when the book supports the answer."
+        )
+    return None
 
 
 def _parse_suggestions(content: str) -> list[str]:

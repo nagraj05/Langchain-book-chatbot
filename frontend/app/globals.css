@@ -347,8 +347,10 @@ svg {
 .empty-add-button svg { width: 16px; height: 16px; }
 
 .message-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; margin-bottom: 32px; }
-.avatar { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-secondary); font-size: 0.66rem; font-weight: 750; }
-.assistant .avatar { border: 0; background: var(--accent); color: #17110b; font-size: 0.82rem; }
+.avatar { width: 34px; height: 34px; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); }
+.avatar svg { display: block; width: 100%; height: 100%; fill: initial; stroke: initial; stroke-width: initial; }
+.avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.assistant .avatar { border-color: rgba(242, 166, 90, 0.38); }
 .message-content { min-width: 0; }
 .message-author { margin: 1px 0 7px; font-size: 0.76rem; font-weight: 650; }
 .message-text { color: #dce1e7; font-size: 0.94rem; line-height: 1.72; overflow-wrap: anywhere; }
