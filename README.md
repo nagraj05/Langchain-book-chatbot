@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="./frontend/app/icon.svg" alt="Local Library AI logo" width="92" height="92" />
+  <img src="./frontend/app/icon.svg" alt="BOOKBot logo" width="92" height="92" />
 
-  # Local Library AI
+  # BOOKBot
 
   **Ask your books anything. Private, grounded, and completely local.**
 
@@ -18,7 +18,7 @@
 
 ---
 
-Local Library AI turns PDFs and ebooks into a private, searchable knowledge base. It extracts and chunks book content, creates embeddings locally, retrieves the passages most relevant to a question, and asks a local model to produce a cited answer.
+BOOKBot turns PDFs and ebooks into a private, searchable knowledge base. It extracts and chunks book content, creates embeddings locally, retrieves the passages most relevant to a question, and asks a local model to produce a cited answer.
 
 > [!IMPORTANT]
 > The default pipeline runs through Ollama and a local Qdrant instance. Your books, questions, embeddings, and answers stay on your machine.
