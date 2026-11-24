@@ -17,6 +17,12 @@ class UploadResponse(BaseModel):
     already_indexed: bool = False
 
 
+class SuggestionsResponse(BaseModel):
+    book_id: str
+    suggestions: list[str]
+    cached: bool = False
+
+
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
@@ -26,6 +32,7 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
     book_ids: list[str] = Field(default_factory=list)
     history: list[ChatMessage] = Field(default_factory=list, max_length=12)
+    conversation_id: str | None = None
 
 
 class Source(BaseModel):
@@ -41,6 +48,29 @@ class Source(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[Source]
+
+
+class ConversationCreate(BaseModel):
+    book_id: str
+    title: str = Field(min_length=1, max_length=120)
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    title: str
+    book_id: str
+    created_at: str
+    updated_at: str
+    message_count: int
+
+
+class StoredMessage(ChatMessage):
+    sources: list[Source] = Field(default_factory=list)
+    created_at: str
+
+
+class ConversationDetail(ConversationSummary):
+    messages: list[StoredMessage]
 
 
 class HealthResponse(BaseModel):

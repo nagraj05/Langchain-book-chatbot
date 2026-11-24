@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.conversations import conversation_store
 from app.ingestion import SUPPORTED_SUFFIXES, extract_documents, split_documents
 from app.library import content_id, registry
 from app.rag import rag_service
@@ -16,7 +17,11 @@ from app.schemas import (
     Book,
     ChatRequest,
     ChatResponse,
+    ConversationCreate,
+    ConversationDetail,
+    ConversationSummary,
     HealthResponse,
+    SuggestionsResponse,
     UploadResponse,
 )
 
@@ -61,6 +66,32 @@ def list_books() -> list[Book]:
     return sorted(registry.list(), key=lambda book: book.added_at, reverse=True)
 
 
+@app.get("/api/conversations", response_model=list[ConversationSummary])
+def list_conversations() -> list[ConversationSummary]:
+    return conversation_store.list()
+
+
+@app.post("/api/conversations", response_model=ConversationSummary, status_code=201)
+def create_conversation(request: ConversationCreate) -> ConversationSummary:
+    if not registry.get(request.book_id):
+        raise HTTPException(status_code=400, detail="Book not found.")
+    return conversation_store.create(request.book_id, request.title)
+
+
+@app.get("/api/conversations/{conversation_id}", response_model=ConversationDetail)
+def get_conversation(conversation_id: str) -> ConversationDetail:
+    conversation = conversation_store.get(conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return conversation
+
+
+@app.delete("/api/conversations/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: str) -> None:
+    if not conversation_store.delete(conversation_id):
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+
 @app.post("/api/books/upload", response_model=UploadResponse)
 async def upload_book(file: Annotated[UploadFile, File()]) -> UploadResponse:
     filename = file.filename or "book"
@@ -102,11 +133,32 @@ async def upload_book(file: Annotated[UploadFile, File()]) -> UploadResponse:
         ) from exc
 
 
+@app.get("/api/books/{book_id}/suggestions", response_model=SuggestionsResponse)
+async def book_suggestions(book_id: str) -> SuggestionsResponse:
+    book = registry.get(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    cached = conversation_store.get_suggestions(book_id)
+    if cached:
+        return SuggestionsResponse(book_id=book_id, suggestions=cached, cached=True)
+    try:
+        suggestions = await asyncio.to_thread(rag_service.suggest_questions, book_id, book.title)
+        await asyncio.to_thread(conversation_store.save_suggestions, book_id, suggestions)
+        return SuggestionsResponse(book_id=book_id, suggestions=suggestions)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Suggestion generation failed. Check that Ollama and Qdrant are running: {exc}",
+        ) from exc
+
+
 @app.delete("/api/books/{book_id}", status_code=204)
 async def delete_book(book_id: str) -> None:
     if not registry.get(book_id):
         raise HTTPException(status_code=404, detail="Book not found.")
     await asyncio.to_thread(rag_service.remove, book_id)
+    conversation_store.delete_for_book(book_id)
+    conversation_store.delete_suggestions(book_id)
     registry.remove(book_id)
 
 
@@ -117,6 +169,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
     known_ids = {book.id for book in registry.list()}
     if request.book_ids and not set(request.book_ids).issubset(known_ids):
         raise HTTPException(status_code=400, detail="One or more books do not exist.")
+    if request.conversation_id and not conversation_store.get_summary(request.conversation_id):
+        raise HTTPException(status_code=400, detail="Conversation not found.")
     try:
         answer, sources = await asyncio.to_thread(
             rag_service.answer,
@@ -124,6 +178,14 @@ async def chat(request: ChatRequest) -> ChatResponse:
             request.book_ids,
             request.history,
         )
+        if request.conversation_id:
+            await asyncio.to_thread(
+                conversation_store.add_exchange,
+                request.conversation_id,
+                request.question.strip(),
+                answer,
+                sources,
+            )
         return ChatResponse(answer=answer, sources=sources)
     except Exception as exc:
         raise HTTPException(

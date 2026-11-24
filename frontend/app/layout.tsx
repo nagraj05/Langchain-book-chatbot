@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Local Library AI",
-  description: "Ask grounded questions about your private ebook library.",
+  title: "BOOKBot",
+  description: "Ask grounded questions about your private book collection.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

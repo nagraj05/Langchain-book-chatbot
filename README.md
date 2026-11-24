@@ -29,8 +29,10 @@ Local Library AI turns PDFs and ebooks into a private, searchable knowledge base
 | --- | --- | --- |
 | 📚 | Multi-format library | Upload PDF, EPUB, TXT, and Markdown files |
 | 💬 | Focused chat | Ask one book, several selected books, or the whole library |
+| 💡 | Document-aware prompts | Generate and cache suggested questions from each book’s indexed passages |
 | 🔎 | Grounded retrieval | Answers are built from the most relevant passages, not guesswork alone |
 | 🔖 | Source citations | Inspect the book, chapter, page, and exact supporting passage |
+| 🕘 | Local chat history | Restore previous conversations from the built-in SQLite store |
 | 🔒 | Local by default | Ollama, embeddings, Qdrant, and generation run on your computer |
 | ✍️ | Rich answers | Markdown, lists, tables, links, and code blocks render cleanly |
 | 📱 | Responsive interface | Minimal chat UI for desktop and mobile |
@@ -254,6 +256,11 @@ Restart the frontend after changing environment variables.
 | `GET` | `/api/books` | List indexed books |
 | `POST` | `/api/books/upload` | Upload and index a book |
 | `DELETE` | `/api/books/{book_id}` | Delete a book and its vectors |
+| `GET` | `/api/books/{book_id}/suggestions` | Generate or load cached questions for a book |
+| `GET` | `/api/conversations` | List saved conversations |
+| `POST` | `/api/conversations` | Start a conversation for one book |
+| `GET` | `/api/conversations/{conversation_id}` | Restore messages and citations |
+| `DELETE` | `/api/conversations/{conversation_id}` | Delete a saved conversation |
 | `POST` | `/api/chat` | Retrieve relevant passages and generate an answer |
 
 Example chat request:
@@ -277,6 +284,7 @@ An empty `book_ids` array searches every indexed book.
 ├── backend
 │   ├── app
 │   │   ├── config.py       # Environment configuration
+│   │   ├── conversations.py # Local SQLite conversation history
 │   │   ├── ingestion.py    # File extraction and chunking
 │   │   ├── library.py      # Local book registry
 │   │   ├── main.py         # FastAPI endpoints
@@ -299,6 +307,7 @@ An empty `book_ids` array searches every indexed book.
 Runtime data is deliberately excluded from Git:
 
 - `backend/data/library.json` contains the local book registry.
+- `backend/data/bookbot.db` contains local conversation history.
 - Qdrant vectors are stored in the Docker volume.
 - Uploaded files are processed in memory or temporary storage and are not committed.
 
@@ -456,7 +465,6 @@ Set `FRONTEND_ORIGIN` to the exact frontend URL, including its port, and restart
 
 ## 🚧 Current limitations
 
-- Chat history is stored only in browser memory and disappears on refresh.
 - Scanned PDFs require OCR before upload.
 - Retrieval uses dense vector similarity without BM25 hybrid search or reranking.
 - Provider selection is not yet available in the interface.
@@ -469,7 +477,6 @@ Set `FRONTEND_ORIGIN` to the exact frontend URL, including its port, and restart
 - Streaming token responses
 - Hybrid dense and keyword retrieval
 - Passage reranking
-- Persistent conversation history
 - OCR for scanned PDFs
 - Background ingestion progress
 - Automated RAG evaluation

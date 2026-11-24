@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from uuid import uuid4
 
 from langchain_core.documents import Document
@@ -145,12 +147,96 @@ class RagService:
         )
         return str(response.content), sources
 
+    def suggest_questions(self, book_id: str, title: str) -> list[str]:
+        if not self.client.collection_exists(settings.qdrant_collection):
+            raise ValueError("The book index is not available.")
+
+        points, _ = self.client.scroll(
+            collection_name=settings.qdrant_collection,
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.book_id",
+                        match=models.MatchValue(value=book_id),
+                    )
+                ]
+            ),
+            limit=60,
+            with_payload=True,
+            with_vectors=False,
+        )
+        passages: list[tuple[int, str]] = []
+        for point in points:
+            payload = point.payload or {}
+            metadata = payload.get("metadata") or {}
+            text = str(payload.get("page_content") or "").strip()
+            if text:
+                passages.append((int(metadata.get("chunk_index", len(passages))), text))
+        passages.sort(key=lambda item: item[0])
+        if not passages:
+            raise ValueError("No indexed passages were found for this book.")
+
+        sample_count = min(6, len(passages))
+        if sample_count == 1:
+            sample_indices = [0]
+        else:
+            sample_indices = sorted(
+                {round(index * (len(passages) - 1) / (sample_count - 1)) for index in range(sample_count)}
+            )
+        excerpts = "\n\n".join(
+            f"[Excerpt {position + 1}]\n{passages[index][1][:900]}"
+            for position, index in enumerate(sample_indices)
+        )
+        response = self.chat.invoke(
+            [
+                SystemMessage(
+                    content=(
+                        "Generate exactly three useful questions a reader could ask about the "
+                        "provided document. Make them specific to its actual content, varied, and "
+                        "short enough for suggestion buttons. Do not assume the document is fiction. "
+                        "Return only a JSON array of three strings."
+                    )
+                ),
+                HumanMessage(content=f"Document title: {title}\n\n{excerpts}"),
+            ]
+        )
+        return _parse_suggestions(str(response.content))
+
 
 def _excerpt(text: str, limit: int = 320) -> str:
     normalized = " ".join(text.split())
     if len(normalized) <= limit:
         return normalized
     return normalized[:limit].rsplit(" ", 1)[0] + "…"
+
+
+def _parse_suggestions(content: str) -> list[str]:
+    candidates: list[str] = []
+    match = re.search(r"\[[\s\S]*\]", content)
+    if match:
+        try:
+            parsed = json.loads(match.group(0))
+            if isinstance(parsed, list):
+                candidates = [str(item) for item in parsed]
+        except json.JSONDecodeError:
+            candidates = []
+    if not candidates:
+        candidates = [
+            re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", line).strip(" \t\"'")
+            for line in content.splitlines()
+            if line.strip()
+        ]
+
+    suggestions: list[str] = []
+    for candidate in candidates:
+        clean = " ".join(candidate.split()).strip()
+        if 8 <= len(clean) <= 140 and clean not in suggestions:
+            suggestions.append(clean)
+        if len(suggestions) == 3:
+            break
+    if len(suggestions) != 3:
+        raise ValueError("The model did not return three valid suggestions.")
+    return suggestions
 
 
 rag_service = RagService()
