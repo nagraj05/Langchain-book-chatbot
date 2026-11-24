@@ -9,23 +9,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { Avatar as DiceBearAvatar, Style } from "@dicebear/core";
-import bottts from "@dicebear/styles/bottts.json";
 import BoringAvatar from "boring-avatars";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const botttsStyle = new Style(bottts);
-const BOOKBOT_AVATAR = new DiceBearAvatar(botttsStyle, {
-  seed: "BOOKBot",
-  backgroundColor: "#111418",
-  borderRadius: 24,
-  scale: 0.84,
-  title: "BOOKBot",
-  idRandomization: true,
-}).toDataUri();
-
 type Book = { id: string; title: string; filename: string; file_type: string; chunks: number; added_at: string };
 type Source = { index: number; book_id: string; title: string; section?: string; page?: number; excerpt: string };
 type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
@@ -83,7 +71,12 @@ function FileIcon() {
 }
 
 function SendIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 11-5-3.8 10-1.7-3.5z" /></svg>;
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m21 3-7 18-4-8-8-4 19-6Z" />
+      <path d="m10 13 11-10" />
+    </svg>
+  );
 }
 
 function MenuIcon() {
@@ -106,7 +99,7 @@ function ChatAvatar({ role }: { role: Message["role"] }) {
       aria-label={assistant ? "BOOKBot avatar" : "Your avatar"}
     >
       {assistant ? (
-        <img src={BOOKBOT_AVATAR} alt="" />
+        <img src="/icon.svg" alt="" />
       ) : (
         <BoringAvatar
           name="BOOKBot Reader"
